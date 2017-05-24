@@ -51,7 +51,7 @@ server.listen(env.NODE_PORT || 3000, env.NODE_IP || 'localhost', function () {
 /**
  * WebSocket server
  */
-const wss = new WebSocket.Server({ port: 8443 });
+const wss = new WebSocket.Server({ port: 1337 });
 
 wss.on('connection', function connection(ws) {
   ws.on('message', function incoming(message) {
