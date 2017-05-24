@@ -43,7 +43,7 @@ let server = http.createServer(function (req, res) {
 var server_port = process.env.OPENSHIFT_NODEJS_PORT || 8080;
 var server_ip_address = process.env.OPENSHIFT_NODEJS_IP || 'localhost';
 
-server.listen(server_port, server_ip_address, function(){
+server.listen(env.NODE_PORT || 3000, env.NODE_IP || 'localhost', function () {
   console.log(`Application worker ${process.pid} started...`);
 });
 
