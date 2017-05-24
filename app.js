@@ -47,11 +47,10 @@ server.listen(env.NODE_PORT || 3000, env.NODE_IP || 'localhost', function () {
   console.log(`Application worker ${process.pid} started...`);
 });
 
-
 /**
  * WebSocket server
  */
-const wss = new WebSocket.Server({ port: 1337 });
+const wss = new WebSocket.Server({ server:server });
 
 wss.on('connection', function connection(ws) {
   ws.on('message', function incoming(message) {
