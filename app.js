@@ -49,37 +49,79 @@ server.listen(env.NODE_PORT || 3000, env.NODE_IP || 'localhost', function () {
 /**
  * WebSocket server
  */
+// Vars
 const PLAYERS_PER_GAME = 4;
-var people = {};
 var games = {};
 var Game = {
     id: null,
     clients: [],
     seed: null,
+    readies: 0,
+};
+var clients = {};
+var Client = {
+    socketId: null,
+    displayName: null,
 };
 
 var io = socketsio.listen(server);
 
 io.on('connection', function (socket) {
-    console.log("New Connection");
+    var data = socket.request;
+    var displayName = data._query['displayName'];
+    console.log("New Connection: " + displayName);
+    // Add new client
+    var client = JSON.parse(JSON.stringify(Client));
+    client.displayName = displayName;
+    client.socketId = socket.id;
+    clients[socket.id] = client;
 
-    /*******************
+    /* *************** *
      * Client Messages *
-     ******************/
-    socket.on('joinLobby', function (clientId, gameId) {
-        console.log("Join Lobby Request: clientId="+clientId+"; gameId="+gameId);
+     * *************** */
+    socket.on('disconnect', function () {
+        console.log('Lost a connection:'+socket.id);
+
+        // Loop through games
+        let keys = Object.keys(games);
+        gameLoop:
+        for (let i = 0; i < keys.length; i++) {
+
+            // Loop through clients
+            clientLoop:
+            for (let j = 0; j < games[keys[i]].clients.length; j++) {
+                // Check if its our client that left
+                if (games[keys[i]].clients[j] === clients[socket.id]) {
+                    console.log("Removing Client:" + socket.id + " from game: "+games[keys[i]].id);
+                    leaveGame(socket.id, games[keys[i]].id, socket);
+                    break gameLoop;
+                }
+            }
+        }
+        delete clients[socket.id];
+    });
+    socket.on('joinRoom', function (gameId) {
+        console.log("Join Lobby Request: clientId="+socket.id+"; gameId="+gameId);
+
         // Joined Specified Game
         if (gameId && games.hasOwnProperty(gameId)) {
-            console.log("Joining Specific Lobby: gameId="+gameId);
-            joinGame(clientId, gameId, socket);
+            if (!gameFull(gameId)) {
+                console.log("Joining Specific Lobby: gameId=" + gameId);
+                joinGame(socket.id, gameId, socket);
+                return;
+            }
+            // Game full
+            console.log("Specific Lobby is full: gameId=" + gameId);
+            socket.emit("gameFull", gameId);
             return;
         }
+
         // Join Random Game
         if (!gameId && games.length > 0) {
             for (let i = 0; i < games.length; i++) {
                 if (games[i].clients.length < PLAYERS_PER_GAME) {
                     console.log("Joining Random Lobby: gameId="+games[i].id);
-                    joinGame(clientId, games[i].id, socket);
+                    joinGame(socket.id, games[i].id, socket);
                     return;
                 }
             }
@@ -87,49 +129,79 @@ io.on('connection', function (socket) {
 
         // Start New Game
         let game = createGame(gameId);
-        console.log("Creating a Lobby: gameId="+game.id);
-        joinGame(clientId, game.id, socket);
+        joinGame(socket.id, game.id, socket);
     });
-
-    socket.on('lobbyStart', function (clientId) {
-        console.log("Start Lobby Request: clientId="+clientId);
+    socket.on('createRoom', function () {
+        console.log("Start Lobby Request: clientId="+socket.id);
         let game = createGame();
-        socket.join(game.id);
-        joinGame(clientId, game.id);
-        socket.emit("lobbyJoined", game);
+        joinGame(socket.id, game.id, socket);
     });
-    socket.on('leaveGame', function (clientId, gameId) {
-        console.log("Leave Lobby Request: clientId="+clientId+"; gameId="+gameId);
+    socket.on('leaveRoom', function () {
+        console.log("Leave Lobby Request: clientId="+socket.id+"; gameId="+gameId);
         // Remove player from the game and lobby
-        socket.leave(gameId);
-        let index = games[gameId].clients.indexOf(clientId);
-        games[gameId].clients.splice(index,1);
-        io.to(gameId).emit('playerLeft', clientId);
+        leaveGame(socket.id, gameId, socket);
     });
-    socket.on('lostGame', function (clientId, gameId) {
-        console.log("Lost Game Request: clientId="+clientId+"; gameId="+gameId);
-        io.to(gameId).emit('playerLost', clientId);
+    socket.on('lostGame', function () {
+        console.log("Lost Game Request: clientId="+socket.id+"; gameId="+gameId);
+        socket.broadcast.to(gameId).emit('playerLost', socket.id);
     });
-    socket.on('sendLine', function (clientId, gameId) {
-        console.log("Send Line Request: clientId="+clientId+"; gameId="+gameId);
-        io.to(gameId).emit('receiveLine', clientId);
+    socket.on('penaltyLine', function () {
+        console.log("Penalty Line from: "+socket.id);
+        socket.broadcast.to(gameId).emit('penaltyLine');
+    });
+    socket.on('readyToStart', function () {
+        console.log("Ready to Start From "+ clients[socket.id].displayName);
+        let game = getGame(socket.id);
+
+        // Tell everyone else this player has readied
+        socket.broadcast.to(game.id).emit("readyToStart", clients[socket.id]);
+
+        // Increment readies and check if game should start
+        game.readies++;
+        if (game.readies >= game.clients.length) {
+            startGame(game.id, socket);
+        }
     });
 });
 
+function leaveGame(clientId, gameId, socket) {
+    if (games && games.hasOwnProperty(gameId)) {
+        let index = games[gameId].clients.indexOf(clients[clientId]);
+        if (index >= 0) {
+            games[gameId].clients.splice(index,1);
+            socket.broadcast.to(gameId).emit('playerLeftRoom', clients[clientId]);
+            socket.leave(gameId);
+            if (games[gameId].clients.length <= 0) {
+                console.log("Deleting Game: "+gameId);
+                delete games[gameId];
+            }
+        } else {
+            console.log("Client:"+clientId+" Tried to leave game:"+gameId+" but doesnt no belong to it");
+        }
+    } else {
+        console.log("Tried to leave:"+gameId+" but no game found");
+    }
+}
+
 function joinGame(clientId, gameId, socket) {
-    if (games.hasOwnProperty(gameId)) {
-        if (games[gameId].clients.indexOf(clientId) < 0) {
+    if (games && games.hasOwnProperty(gameId)) {
+        if (games[gameId].clients.indexOf(clients[clientId]) >= 0) {
             console.log("Client: "+clientId+" is already a part of game: "+gameId);
+            return;
         }
         socket.join(gameId);
-        games[gameId].clients.push(clientId);
-        socket.emit("lobbyJoined", games[gameId]);
-        io.to(gameId).emit('playerJoined', clientId);
-    }
-    else {
+        games[gameId].clients.push(clients[socket.id]);
+        socket.emit("joinedRoom", games[gameId]);
+        socket.broadcast.to(gameId).emit('playerJoinedRoom', clients[socket.id]);
+
+        if (games[gameId].clients.length >= PLAYERS_PER_GAME) {
+            startGame(gameId, socket);
+        }
+    } else {
         console.log("Tried to join:"+gameId+" but no game found");
     }
 }
+
 function createGame(gameId) {
 
     // Create a new game object
@@ -142,6 +214,32 @@ function createGame(gameId) {
     return games[g.id];
 }
 
+function startGame(gameId, socket) {
+    console.log("Starting Game: "+gameId);
+    io.in(gameId).emit('startGame');
+}
+
+function gameFull(gameId) {
+    if (gameId && games && games.hasOwnProperty(gameId) && games[gameId].clients.length < PLAYERS_PER_GAME) {
+        return false;
+    }
+    return true;
+}
+function getGame(clientId) {
+    let keys = Object.keys(games);
+    for (let i = 0; i < keys.length; i++) {
+        for (let j = 0; j < games[keys[i]].clients.length; j++) {
+            if (games[keys[i]].clients[j].socketId == clientId) {
+                return games[keys[i]];
+            }
+        }
+    }
+    return null;
+}
+
+/* ***************** *
+ * Utility Functions *
+ * ***************** */
 function guid() {
     return s4() + s4() + '-' + s4() + '-' + s4() + '-' +
         s4() + '-' + s4() + s4() + s4();
