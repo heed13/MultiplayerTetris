@@ -137,21 +137,25 @@ io.on('connection', function (socket) {
         joinGame(socket.id, game.id, socket);
     });
     socket.on('leaveRoom', function () {
-        console.log("Leave Lobby Request: clientId="+socket.id+"; gameId="+gameId);
+        var game  = getGame(socket.id);
+        console.log("Leave Lobby Request: clientId="+socket.id+"; gameId="+game.id);
         // Remove player from the game and lobby
-        leaveGame(socket.id, gameId, socket);
+        leaveGame(socket.id, game.id, socket);
     });
     socket.on('lostGame', function () {
-        console.log("Lost Game Request: clientId="+socket.id+"; gameId="+gameId);
-        socket.broadcast.to(gameId).emit('playerLost', socket.id);
+        var game  = getGame(socket.id);
+        console.log("Lost Game Request: clientId="+socket.id+"; gameId="+game.id);
+        socket.broadcast.to(game.id).emit('playerLost', socket.id);
     });
-    socket.on('penaltyLine', function () {
-        console.log("Penalty Line from: "+socket.id);
-        socket.broadcast.to(gameId).emit('penaltyLine');
+    socket.on('penaltyLine', function (lineData) {
+        var game  = getGame(socket.id);
+        console.log("Penalty Line from: "+socket.id +" Game: "+game.id);
+        socket.broadcast.to(game.id).emit('penaltyLine');
+        // io.in(game.id).emit('penaltyLine', lineData);
     });
     socket.on('readyToStart', function () {
+        var game  = getGame(socket.id);
         console.log("Ready to Start From "+ clients[socket.id].displayName);
-        let game = getGame(socket.id);
 
         // Tell everyone else this player has readied
         socket.broadcast.to(game.id).emit("readyToStart", clients[socket.id]);
