@@ -157,7 +157,7 @@ io.on('connection', function (socket) {
     socket.on('penaltyLine', function (lineData) {
         var game  = getGame(socket.id);
         console.log("Penalty Line from: "+socket.id +" Game: "+game.id);
-        socket.broadcast.to(game.id).emit('penaltyLine');
+        socket.broadcast.to(game.id).emit('penaltyLine', lineData);
         // io.in(game.id).emit('penaltyLine', lineData);
     });
     socket.on('readyToStart', function () {
