@@ -56,7 +56,9 @@ var Game = {
     id: null,
     clients: [],
     seed: null,
-    readies: 0,
+    readies: [],
+    lost: [],
+    started: false,
 };
 var clients = {};
 var Client = {
@@ -145,7 +147,12 @@ io.on('connection', function (socket) {
     socket.on('lostGame', function () {
         var game  = getGame(socket.id);
         console.log("Lost Game Request: clientId="+socket.id+"; gameId="+game.id);
+        game.lost.push(socket.id);
         socket.broadcast.to(game.id).emit('playerLost', socket.id);
+        if (isGameOver(game)) {
+            endGame(game);
+        }
+
     });
     socket.on('penaltyLine', function (lineData) {
         var game  = getGame(socket.id);
@@ -154,16 +161,20 @@ io.on('connection', function (socket) {
         // io.in(game.id).emit('penaltyLine', lineData);
     });
     socket.on('readyToStart', function () {
-        var game  = getGame(socket.id);
-        console.log("Ready to Start From "+ clients[socket.id].displayName);
+        var game = getGame(socket.id);
+        console.log("Ready to Start From " + clients[socket.id].displayName);
+
+        // Set player as ready
+        if (game.readies.indexOf(socket.id) < 0) {
+            game.readies.push(socket.id);
+        }
 
         // Tell everyone else this player has readied
-        socket.broadcast.to(game.id).emit("readyToStart", clients[socket.id]);
+        io.to(game.id).emit("readyToStart", game.readies);
 
-        // Increment readies and check if game should start
-        game.readies++;
-        if (game.readies >= game.clients.length) {
-            startGame(game.id, socket);
+        // Check if game should start
+        if (game.readies.length >= game.clients.length) {
+            startGame(game);
         }
     });
 });
@@ -172,12 +183,19 @@ function leaveGame(clientId, gameId, socket) {
     if (games && games.hasOwnProperty(gameId)) {
         let index = games[gameId].clients.indexOf(clients[clientId]);
         if (index >= 0) {
-            games[gameId].clients.splice(index,1);
+            // if (!games[gameId].started) {
+            games[gameId].clients.splice(index, 1);
+            games[gameId].lost.push(clientId);
+            // }
             socket.broadcast.to(gameId).emit('playerLeftRoom', clients[clientId]);
             socket.leave(gameId);
             if (games[gameId].clients.length <= 0) {
                 console.log("Deleting Game: "+gameId);
                 delete games[gameId];
+            } else {
+                if (isGameOver(games[gameId])) {
+                    endGame(games[gameId]);
+                }
             }
         } else {
             console.log("Client:"+clientId+" Tried to leave game:"+gameId+" but doesnt no belong to it");
@@ -199,7 +217,7 @@ function joinGame(clientId, gameId, socket) {
         socket.broadcast.to(gameId).emit('playerJoinedRoom', clients[socket.id]);
 
         if (games[gameId].clients.length >= PLAYERS_PER_GAME) {
-            startGame(gameId, socket);
+            startGame(games[gameId]);
         }
     } else {
         console.log("Tried to join:"+gameId+" but no game found");
@@ -218,9 +236,29 @@ function createGame(gameId) {
     return games[g.id];
 }
 
-function startGame(gameId, socket) {
-    console.log("Starting Game: "+gameId);
-    io.in(gameId).emit('startGame');
+function startGame(game) {
+    console.log("Starting Game: "+game.id);
+    game.started = true;
+    io.in(game.id).emit('startGame');
+}
+
+function endGame(game) {
+    var winner = getGameWinner(game);
+    console.log("Ending Game: "+game.id+ " Winner: "+clients[winner].displayName);
+    io.in(game.id).emit("gameOver", {winner: clients[winner]});
+}
+
+function getGameWinner(game) {
+    for (var i = 0; i < game.clients.length; i++) {
+        if (game.lost.indexOf(game.clients[i]) < 0) {
+            return game.clients[i];
+        }
+    }
+    return null;
+}
+
+function isGameOver(game) {
+    return (game.started && (game.lost.length >= game.clients.length-1));
 }
 
 function gameFull(gameId) {
