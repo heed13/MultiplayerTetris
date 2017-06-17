@@ -148,7 +148,7 @@ io.on('connection', function (socket) {
         var game  = getGame(socket.id);
         console.log("Lost Game Request: clientId="+socket.id+"; gameId="+game.id);
         game.lost.push(socket.id);
-        socket.broadcast.to(game.id).emit('playerLost', socket.id);
+        socket.broadcast.to(game.id).emit('playerLost', clients[socket.id]);
         if (isGameOver(game)) {
             endGame(game);
         }
@@ -180,6 +180,7 @@ io.on('connection', function (socket) {
 });
 
 function leaveGame(clientId, gameId, socket) {
+    socket.leave(gameId);
     if (games && games.hasOwnProperty(gameId)) {
         let index = games[gameId].clients.indexOf(clients[clientId]);
         if (index >= 0) {
@@ -188,7 +189,7 @@ function leaveGame(clientId, gameId, socket) {
             games[gameId].lost.push(clientId);
             // }
             socket.broadcast.to(gameId).emit('playerLeftRoom', clients[clientId]);
-            socket.leave(gameId);
+
             if (games[gameId].clients.length <= 0) {
                 console.log("Deleting Game: "+gameId);
                 delete games[gameId];
@@ -243,14 +244,20 @@ function startGame(game) {
 }
 
 function endGame(game) {
+    console.log("Ending Game: "+game.id);
     var winner = getGameWinner(game);
-    console.log("Ending Game: "+game.id+ " Winner: "+clients[winner].displayName);
-    io.in(game.id).emit("gameOver", {winner: clients[winner]});
+    if (winner) {
+        console.log("Winner of game: "+winner.displayName);
+        io.in(game.id).emit("gameOver", {winner: winner});
+    }
 }
 
 function getGameWinner(game) {
+    console.log(game.clients);
+    console.log(game.lost);
+
     for (var i = 0; i < game.clients.length; i++) {
-        if (game.lost.indexOf(game.clients[i]) < 0) {
+        if (game.lost.indexOf(game.clients[i].socketId) < 0) {
             return game.clients[i];
         }
     }
