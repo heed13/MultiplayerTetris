@@ -147,12 +147,14 @@ io.on('connection', function (socket) {
     socket.on('lostGame', function () {
         var game  = getGame(socket.id);
         console.log("Lost Game Request: clientId="+socket.id+"; gameId="+game.id);
-        game.lost.push(socket.id);
-        socket.broadcast.to(game.id).emit('playerLost', clients[socket.id]);
-        if (isGameOver(game)) {
-            endGame(game);
+        if (game.lost.indexOf(socket.id) < 0) {
+            game.lost.push(socket.id);
+            socket.broadcast.to(game.id).emit('playerLost', clients[socket.id]);
+            if (isGameOver(game)) {
+                endGame(game);
+            }
         }
-
+        // Else this person has already lost
     });
     socket.on('penaltyLine', function (lineData) {
         var game  = getGame(socket.id);
