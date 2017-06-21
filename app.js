@@ -46,6 +46,7 @@ server.listen(env.NODE_PORT || 3000, env.NODE_IP || 'localhost', function () {
     console.log(`Application worker ${process.pid} started...`);
 });
 
+
 /**
  * WebSocket server
  */
@@ -119,11 +120,13 @@ io.on('connection', function (socket) {
         }
 
         // Join Random Game
-        if (!gameId && games.length > 0) {
-            for (let i = 0; i < games.length; i++) {
-                if (games[i].clients.length < PLAYERS_PER_GAME) {
-                    console.log("Joining Random Lobby: gameId="+games[i].id);
-                    joinGame(socket.id, games[i].id, socket);
+        let gameKeys = Object.keys(games);
+        if (!gameId && gameKeys.length > 0) {
+            for (let i = 0; i < gameKeys.length; i++) {
+                let game = games[gameKeys[i]];
+                if (game.clients.length < PLAYERS_PER_GAME && !game.started) {
+                    console.log("Joining Random Lobby: gameId="+game.id);
+                    joinGame(socket.id, game.id, socket);
                     return;
                 }
             }
@@ -212,6 +215,14 @@ function joinGame(clientId, gameId, socket) {
     if (games && games.hasOwnProperty(gameId)) {
         if (games[gameId].clients.indexOf(clients[clientId]) >= 0) {
             console.log("Client: "+clientId+" is already a part of game: "+gameId);
+            return;
+        }
+        if (games[gameId].clients >= PLAYERS_PER_GAME) {
+            console.log("Game: "+gameId+" is already full");
+            return;
+        }
+        else if (games[gameId].started) {
+            console.log("Game: "+gameId+" has already started");
             return;
         }
         socket.join(gameId);

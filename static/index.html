@@ -1,41 +1,49 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en-us">
 <head>
-  <meta charset="UTF-8">
-  <title>Tetris Dedicated Server</title>
-  <meta name="description" content="Tetris server">
-  <meta name="keywords" content="tetris, phaser, game, games, multiplayer">
-  <meta name="author" content="Sean Bartholomew (Heed)">
-  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
-
-  <link href='https://fonts.googleapis.com/css?family=Ubuntu|Ubuntu+Mono' rel='stylesheet' type='text/css'>
-  <link href="main.css" rel="stylesheet">
-
+    <meta charset="utf-8">
+    <title>Tetris</title>
+    <!-- Our Css -->
+    <!--<link rel="stylesheet" type="text/css" href="/index.css">-->
+    
 </head>
-
+    
 <body>
-  <header>
-    <p>This is a</p>
-    <img class="logo" title="Node.js" src="nodejs-logo.svg">
-    <p>application running in a <a href="https://github.com/icflorescu/openshift-cartridge-nodejs" target="_blank">custom cartridge</a> on</p>
-    <img class="logo" title="OpenShift Online Logo" src="openshift-online-logo.svg">
-  </header>
-  <main>
-    <div style="display: none;">
-    <p>Well, this is a dedicated web server for a phaser tetris game. It'd be nice if you could move along now. Maybe try one of these sites instead</p>
-    <a href="" target="_blank">Wait... I've not put in a href yet...</a>
+    <div id="game"></div>
+        <p>Move Left: a</p>
+        <p>Move Right: d</p>
+        <p>Rotate: w</p>
+        <p>Soft Drop: s</p>
     </div>
-  </main>
-  <footer>
-    <p>Provided by <a href="https://github.com/icflorescu" target="_blank">Ionut-Cristian Florescu</a> and released under the <a href="https://github.com/icflorescu/openshift-cartridge-nodejs/blob/master/LICENSE">ISC License</a>.</p>
-  </footer>
-
-  <script src="https://cdn.jsdelivr.net/riot/2.4.1/riot+compiler.min.js"></script>
-  <script src="https://cdn.jsdelivr.net/superagent/0.18.0/superagent.min.js"></script>
-  <script type="riot/tag" src="info.tag"></script>
-  <script>
-    riot.mount('*')
-  </script>
-
 </body>
+
+<!-- 3rd Party JS -->
+<script src="//cdnjs.cloudflare.com/ajax/libs/seedrandom/2.4.3/seedrandom.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/2.0.1/socket.io.js"></script>
+<script src="https://ajax.googleapis.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
+<!-- Our JS -->
+<script type="text/javascript" src="/v2/build/phaser.min.js"></script>
+<script type="text/javascript" src="/lobby.js"></script>
+<script type="text/javascript" src="/usernameMenu.js"></script>
+<script type="text/javascript" src="/tetris.js"></script>
+<script type="text/javascript" src="/multiplayer.js"></script>
+<script type="text/javascript" src="/game.js"></script>
+<script>
+/* global $, MultiplayerController, jQuery, GameController */
+    // On Load
+    $(document).ready(function () {
+        //Check Dependencies
+        if (!MultiplayerController) {
+            console.log("No Multiplayer Controller");
+            return;
+        }
+        if (!jQuery) {
+            console.log("No jQuery");
+            return;
+        }
+        
+        // Start the game
+        GameController.init();
+    })
+</script>
 </html>
