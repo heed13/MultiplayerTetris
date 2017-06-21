@@ -220,7 +220,7 @@ function joinGame(clientId, gameId, socket) {
         socket.broadcast.to(gameId).emit('playerJoinedRoom', clients[socket.id]);
 
         if (games[gameId].clients.length >= PLAYERS_PER_GAME) {
-            startGame(games[gameId]);
+            // startGame(games[gameId]);
         }
     } else {
         console.log("Tried to join:"+gameId+" but no game found");
