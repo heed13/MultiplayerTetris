@@ -5,16 +5,16 @@
     <title>Tetris</title>
     <!-- Our Css -->
     <!--<link rel="stylesheet" type="text/css" href="/index.css">-->
-    
 </head>
-    
+
 <body>
-    <div id="game"></div>
-        <p>Move Left: a</p>
-        <p>Move Right: d</p>
-        <p>Rotate: w</p>
-        <p>Soft Drop: s</p>
-    </div>
+<div id="game"></div>
+<p>Move Left: a</p>
+<p>Move Right: d</p>
+<p>Rotate: w</p>
+<p>Soft Drop: s</p>
+</div>
+<input id="gameId" type="text" style="position: absolute;left:98px;top:350px;height:25px;display:none;" placeholder="game id">
 </body>
 
 <!-- 3rd Party JS -->
@@ -29,7 +29,7 @@
 <script type="text/javascript" src="/multiplayer.js"></script>
 <script type="text/javascript" src="/game.js"></script>
 <script>
-/* global $, MultiplayerController, jQuery, GameController */
+    /* global $, MultiplayerController, jQuery, GameController */
     // On Load
     $(document).ready(function () {
         //Check Dependencies
@@ -41,7 +41,7 @@
             console.log("No jQuery");
             return;
         }
-        
+
         // Start the game
         GameController.init();
     })
