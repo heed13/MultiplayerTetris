@@ -287,6 +287,9 @@ var GameState = (function(_game) {
             }
            
         },
+        /* ************** *
+         * Game Functions *
+         * ************** */
         serve: function (x) {
             x = typeof x !== 'undefined' ? x : (NUM_BLOCKS_X / 2 - 1);
             // Serve up the first piece
@@ -401,7 +404,9 @@ var GameState = (function(_game) {
             
             return conflict
         },
-        
+        /* ********************* *
+         * Multiplayer Callbacks *
+         * ********************* */
         playerLeftRoom: function (clientInfo) {
             // TODO
         },
@@ -427,10 +432,9 @@ var GameState = (function(_game) {
     };
 });
 
-var Tetromino = (function (_controller, _game, _type, leftX, topY) {
+var Tetromino = (function (_c, _game, _type, leftX, topY) {
     var game = _game;
-    var controller = _controller;
-    
+
     return {
         type: _type,
         sprites: [],
